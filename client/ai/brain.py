@@ -14,10 +14,13 @@ from .rules import (MAX_LEVEL, STONES, needs, path_to, step_towards,
 # Life is counted in time units and drains at exactly t units per second,
 # so a bot burns about one food unit for every 18 actions it takes: it has
 # to keep a large larder before it can afford to stand still and call.
+# Foraging settles at roughly 2000 time units of life, so the thresholds
+# that decide whether a bot may commit to something have to sit below that
+# -- set any higher and the bot simply never does it.
 HUNGRY = 600           # below this, everything else stops
 COMFORTABLE = 5000     # above this, stop hoarding food
-RALLY_RESERVE = 2000   # life needed before committing to a gathering
-RALLY_ABANDON = 900    # a ritual costs 300 on its own: leave while we can
+RALLY_RESERVE = 1400   # life needed before committing to a gathering
+RALLY_ABANDON = 700    # a ritual costs 300 on its own: leave while we can
 
 # Delays are counted in time units too, never in seconds: the server may be
 # running at any speed, and a bot that waited in wall clock seconds would
@@ -26,7 +29,7 @@ RALLY_PERIOD = 70      # time units between two rally calls
 RALLY_TIMEOUT = 300    # a caller quiet for this long is dropped
 RALLY_PATIENCE = 3000  # give up on a gathering after this long
 FORK_PERIOD = 800      # time units between two looks at the family size
-FORK_RESERVE = 2200    # calling a ship costs 48, so this is plenty
+FORK_RESERVE = 1400    # calling a ship costs 48, so this is plenty
 ACTIONS_PER_CHECK = 8  # how many commands between two inventories
 
 
@@ -46,6 +49,8 @@ class Bot:
         self.actions = 0             # commands sent, our own clock
         self.last_inventory = -ACTIONS_PER_CHECK
         self.last_fork_check = 0.0
+        self.short_handed = False    # a gathering of ours went unanswered
+        self.ships_pending = 0       # ships we called and may still fill
         self.evolving = False
         self.t = 100.0               # replaced by calibrate()
         self.calibrate()
@@ -385,7 +390,8 @@ class Bot:
             if self.life < RALLY_ABANDON:
                 self.say("too hungry to keep calling")
                 return
-        self.say("nobody came, back to foraging")
+        self.say("nobody came, the family is too small")
+        self.short_handed = True
 
     def wait_for_ritual(self):
         """Hold still until the 300/t ritual is over, one way or the other."""
@@ -448,16 +454,25 @@ class Bot:
             free = int(free)
         except (TypeError, ValueError):
             return
-        if free > 0:
+        # A free slot only means "somebody may join": at start-up those are
+        # the slots our own team mates are still connecting into.  Only fill
+        # one when it is a ship *we* called that has arrived.
+        if free > 0 and self.ships_pending > 0:
+            self.ships_pending -= 1
             if self.spawner:
                 self.spawner(free)
             return
-        # The last two rituals need six of us at once, and members are lost
-        # to starvation along the way, so keep a ship on the way whenever we
-        # can afford one -- it only costs 48 time units.
-        if self.life > FORK_RESERVE:
+        if free > 0:
+            return
+        # Only call a ship when the family has actually proved too small --
+        # that is, when a gathering we called went unanswered.  Calling one
+        # on a timer instead breeds a crowd that eats the world bare and
+        # leaves nobody at the right level to ritual with.
+        if self.short_handed and self.life > FORK_RESERVE:
+            self.short_handed = False
             self.say("calling a ship")
-            self.do("fork")
+            if self.do("fork") == "ok":
+                self.ships_pending += 1
 
     # -- main loop ------------------------------------------------------
 
