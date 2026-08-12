@@ -1,0 +1,8 @@
+server/build/
+server/zappy_server
+zappy_server
+logs/
+__pycache__/
+*.o
+*.d
+*.pyc

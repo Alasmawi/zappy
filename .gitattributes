@@ -1,0 +1,5 @@
+# The whole project is built and run on Linux: keep LF everywhere, or the
+# shell scripts and the Makefiles break the moment it is cloned on Windows.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

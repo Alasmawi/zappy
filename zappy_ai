@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Usage: ./zappy_ai -n <team> -p <port> [-h <hostname>]
+exec python3 "$(dirname "$0")/client/zappy_ai.py" "$@"

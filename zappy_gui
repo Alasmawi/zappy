@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Usage: ./zappy_gui -p <port> [-h <host>] [--http <port>]
+exec node "$(dirname "$0")/gui/zappy_gui.js" "$@"

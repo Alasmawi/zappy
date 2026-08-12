@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zappy — Minerth</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>Zappy <span class="sub">— the world of Minerth</span></h1>
+  <div id="status" class="status">connecting…</div>
+</header>
+
+<main>
+  <section class="board">
+    <canvas id="map"></canvas>
+    <div id="tooltip" class="tooltip hidden"></div>
+  </section>
+
+  <aside class="side">
+    <div class="panel">
+      <h2>World</h2>
+      <dl id="world">
+        <dt>size</dt><dd id="w-size">–</dd>
+        <dt>time unit</dt><dd id="w-time">–</dd>
+        <dt>players</dt><dd id="w-players">0</dd>
+        <dt>eggs</dt><dd id="w-eggs">0</dd>
+      </dl>
+    </div>
+
+    <div class="panel">
+      <h2>Teams</h2>
+      <ul id="teams" class="teams"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Legend</h2>
+      <ul id="legend" class="legend"></ul>
+      <p class="hint">Click a square to inspect it.</p>
+    </div>
+
+    <div class="panel grow">
+      <h2>Events</h2>
+      <ul id="log" class="log"></ul>
+    </div>
+  </aside>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
