@@ -1,4 +1,4 @@
-NAME    := zappy_server
+NAME    := server
 
 CC      ?= gcc
 CFLAGS  += -std=c11 -W -Wall -Wextra -Iinclude -O2

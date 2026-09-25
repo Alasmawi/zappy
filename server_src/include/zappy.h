@@ -54,6 +54,11 @@ int res_from_name(const char *name);
 
 #define GUI_TEAM_NAME   "GRAPHIC"
 
+/* A client whose unread output grows past this is cut off. */
+#define OUT_LIMIT_AI    (4u << 20)
+#define OUT_LIMIT_GUI   (128u << 20)
+#define CLOSE_GRACE     2.0         /* seconds to flush a goodbye */
+
 /* ------------------------------------------------------------------ */
 /* World                                                              */
 /* ------------------------------------------------------------------ */
@@ -96,7 +101,8 @@ enum action_type {
     ACT_BROADCAST,
     ACT_ENCHANT,
     ACT_FORK,
-    ACT_CONNECT_NBR
+    ACT_CONNECT_NBR,
+    ACT_KO              /* a rejected line, answered in its turn */
 };
 
 #define ARG_MAX 512
@@ -137,6 +143,7 @@ typedef struct incant_s {
     double due;
     int players[16];        /* participant ids */
     int nb_players;
+    int dead;               /* participants who died or left the game */
     int aborted;
     struct incant_s *next;
 } incant_t;
@@ -177,6 +184,7 @@ typedef struct client_s {
     size_t out_len;
     size_t out_cap;
     int closing;
+    double close_at;        /* give up on draining the output after this */
     player_t *pl;
     struct client_s *next;
 } client_t;

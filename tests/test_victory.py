@@ -18,7 +18,7 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
-sys.path.insert(0, os.path.join(ROOT, "client"))
+sys.path.insert(0, os.path.join(ROOT, "client_src"))
 
 import test_protocol                                   # noqa: E402
 from test_protocol import Server, check, FAILED        # noqa: E402

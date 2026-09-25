@@ -8,12 +8,13 @@
 
 /*
 ** Squares around a player are numbered starting at 1 for the square he is
-** facing, then counter-clockwise:
+** facing, then counter-clockwise.  For a player looking up (north):
 **
-**        3 2 1
-**        4 . 8      <- the player looks towards 1
-**        5 6 7
+**        2 1 8
+**        3 . 7
+**        4 5 6
 **
+** 0 means the sound was made on the listener's own square.
 ** Sound travels in a straight line and the world is round, so we take the
 ** shortest path between the emitter and the listener.
 */

@@ -14,7 +14,7 @@ WIDTH="${WIDTH:-15}"
 HEIGHT="${HEIGHT:-15}"
 LOGS="$(mktemp -d)"
 
-"$ROOT/server/zappy_server" -p "$PORT" -x "$WIDTH" -y "$HEIGHT" \
+"$ROOT/server" -p "$PORT" -x "$WIDTH" -y "$HEIGHT" \
     -n red -c "$BOTS" -t "$T" >"$LOGS/server.log" 2>&1 &
 server=$!
 sleep 0.5
@@ -26,7 +26,7 @@ SPAWN_FLAG="--no-spawn"
 
 bots=()
 for i in $(seq 1 "$BOTS"); do
-    python3 "$ROOT/client/zappy_ai.py" -n red -p "$PORT" -v $SPAWN_FLAG \
+    python3 "$ROOT/client_src/zappy_ai.py" -n red -p "$PORT" -v $SPAWN_FLAG \
         >"$LOGS/bot$i.log" 2>&1 &
     bots+=($!)
     sleep 0.2

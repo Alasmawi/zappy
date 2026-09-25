@@ -29,8 +29,18 @@ static const cmd_def_t commands[] = {
     {NULL, 0, 0, 0}
 };
 
+/*
+** A line the server cannot understand still takes its turn in the queue:
+** answering "ko" at once would overtake the answers still owed to the
+** commands sent before it, and a client that pipelines its requests would
+** pair every later answer with the wrong command.
+*/
+static const cmd_def_t ko_def = {"ko", ACT_KO, 0, 0};
+
 static const cmd_def_t *cmd_lookup(int type)
 {
+    if (type == ACT_KO)
+        return &ko_def;
     for (int i = 0; commands[i].name; i++)
         if (commands[i].type == type)
             return &commands[i];
@@ -115,6 +125,7 @@ static void handshake(client_t *cl, char *line)
     client_send(cl, "%d", team->slots);
     client_send(cl, "%d %d", g_srv.world.w, g_srv.world.h);
     gui_player_new(pl);
+    gui_player_inv(pl);
     log_msg("player #%d joined %s at (%d,%d) dir=%d",
             pl->id, team->name, pl->x, pl->y, pl->dir);
 }
@@ -170,7 +181,7 @@ void handle_line(client_t *cl, char *line)
         enqueue(pl, &commands[i], arg);
         return;
     }
-    client_send(cl, "ko");
+    enqueue(pl, &ko_def, NULL);
 }
 
 /* ------------------------------------------------------------------ */
@@ -341,6 +352,9 @@ static void execute(player_t *pl, double now)
     case ACT_CONNECT_NBR:
         client_send(pl->cl, "%d", pl->team->slots);
         break;
+    case ACT_KO:
+        client_send(pl->cl, "ko");
+        break;
     default:
         break;
     }
@@ -410,12 +424,17 @@ void game_tick(double now)
     for (player_t *pl = g_srv.players; pl; pl = next) {
         next = pl->next;
         if (now >= pl->death_at) {
+            client_t *cl = pl->cl;
+
+            /*
+            ** The body leaves the world at once.  Waiting for the client to
+            ** read its "death" first would let a client that stopped reading
+            ** keep a ghost on the map -- seen, kicked, counted in rituals.
+            */
             log_msg("player #%d starved to death", pl->id);
-            client_send(pl->cl, "death");
-            if (pl->cl)
-                client_close(pl->cl);
-            else
-                player_remove(pl);
+            client_send(cl, "death");
+            player_remove(pl);
+            client_close(cl);
             continue;
         }
         player_pump(pl, now);

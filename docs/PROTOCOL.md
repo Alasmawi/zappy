@@ -45,12 +45,13 @@ and closes the connection. A team with no slot left is refused the same way.
 | `kick` | 7/t | `ok` / `ko` |
 | `broadcast <text>` | 7/t | `ok` |
 | `enchantment` | 300/t | `evolution in progress` then `current level : K`, or `ko` |
-
 | `fork` | 48/t | `ok` |
 | `connect_nbr` | 0/t | `<number>` |
 
 Anything else — unknown verb, missing argument, argument given to a command
-that takes none — answers `ko`.
+that takes none — answers `ko`. That `ko` takes its turn in the queue like
+any other command: it comes after the answers still owed to the commands
+sent before it, and it counts towards the 10 pending ones.
 
 At most **10** commands may be awaiting an answer. Further commands are
 dropped and never answered, exactly as the subject requires.
@@ -77,15 +78,19 @@ arriving out of the blue could not be told apart from the answer to whatever
 they had queued, which would shift every later reply onto the wrong command.
 A participant knows the ritual failed because `current level` never comes.
 
+If a participant dies or disconnects, the others carry on and one fewer
+player is needed at the end — unless a single player is left of a ritual
+that needed company: it then breaks down at once.
+
 ### Square numbering
 
 `1` is the square in front of the player and the numbering runs
 counter-clockwise. `0` means "right here".
 
 ```
-        3   2   1
-        4   ·   8      the player looks towards 1
-        5   6   7
+        2   1   8
+        3   ·   7      the player looks up, towards 1
+        4   5   6
 ```
 
 The same numbering is used for `message` and for `moving`.
@@ -121,8 +126,9 @@ announces the team `GRAPHIC` becomes a read-only observer: it can ask
 questions, but nothing it sends can change the game.
 
 On connection the server sends the whole world: `msz`, `sgt`, one `tna` per
-team, one `bct` per square, one `pnw` per player and one `enw` per egg.
-After that, every change is pushed as it happens.
+team, one `bct` per square, one `pnw` followed by one `pin` per player, and
+one `enw` per egg. After that, every change is pushed as it happens; a
+player who joins is announced with `pnw` then `pin`.
 
 ### Server → GUI
 
@@ -158,6 +164,15 @@ After that, every change is pushed as it happens.
 `msz`, `sgt`, `mct` (the whole map), `tna`, `bct X Y`, `ppo #id`,
 `plv #id`, `pin #id`. Anything else answers `suc`; a player or square that
 does not exist answers `sbp`.
+
+### Between the bridge and the browser
+
+`gui/zappy_gui.js` forwards every server line to the page unchanged. It
+remembers the lines needed to rebuild the world, and replays them to a page
+that opens late between two lines of its own, `replay begin` and
+`replay end`, so that the page treats them as a snapshot rather than as
+fresh events. It sends `sdn` when it loses the server, and forgets its
+history when a new `msz` shows the server was restarted.
 
 ### Why a separate protocol
 

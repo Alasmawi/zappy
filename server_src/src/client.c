@@ -39,8 +39,22 @@ client_t *client_new(int fd)
 
 void client_write_raw(client_t *cl, const char *data, size_t len)
 {
+    size_t limit;
+
     if (!cl || cl->closing)
         return;
+    /*
+    ** A client that stops reading must not make the server hoard its output
+    ** forever: past the limit it is cut off, and everybody else carries on.
+    */
+    limit = cl->state == CL_GUI ? OUT_LIMIT_GUI : OUT_LIMIT_AI;
+    if (cl->out_len + len > limit) {
+        log_msg("fd=%d stopped reading, %zu bytes unread: cut off",
+                cl->fd, cl->out_len);
+        cl->out_len = 0;
+        client_close(cl);
+        return;
+    }
     buf_reserve(&cl->out, &cl->out_cap, cl->out_len + len);
     memcpy(cl->out + cl->out_len, data, len);
     cl->out_len += len;
@@ -97,18 +111,20 @@ void client_close(client_t *cl)
     if (!cl || cl->closing)
         return;
     cl->closing = 1;
+    cl->close_at = now_sec() + CLOSE_GRACE;
     log_msg("client fd=%d disconnecting", cl->fd);
 }
 
 void clients_reap(void)
 {
     client_t **pp = &g_srv.clients;
+    double now = now_sec();
 
     while (*pp) {
         client_t *cl = *pp;
 
-        /* let queued output drain before actually closing */
-        if (cl->closing && cl->out_len == 0) {
+        /* let queued output drain before closing, but not for ever */
+        if (cl->closing && (cl->out_len == 0 || now >= cl->close_at)) {
             *pp = cl->next;
             if (cl->pl) {
                 cl->pl->cl = NULL;

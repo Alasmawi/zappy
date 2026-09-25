@@ -88,6 +88,13 @@ void world_init(world_t *w, int width, int height, double scale)
         /* however small the map is, every resource must be reachable */
         if (w->target[i] < 1)
             w->target[i] = 1;
+        /*
+        ** ...and never more than the rules can fit: one of a kind per
+        ** square.  An unreachable target would make every regrowth tick
+        ** hunt for free squares that do not exist.
+        */
+        if (w->target[i] > width * height)
+            w->target[i] = width * height;
     }
     world_spawn_resources(w);
 }
@@ -138,8 +145,17 @@ int world_spawn_resources(world_t *w)
         int res = (w->spawn_turn + i) % RES_COUNT;
         int missing = w->target[res] - w->have[res];
         int attempts = 0;
+        /*
+        ** Random squares are tried until the gap is filled.  On a crowded
+        ** map most of them are refused, so the search is budgeted: what is
+        ** not placed now simply grows back on a later tick, and the server
+        ** never stalls hunting for the last free square of a huge world.
+        */
+        long budget = (long)missing * 64 + 1024;
 
-        while (missing > 0 && attempts < cells * 8) {
+        if (budget > (long)cells * 8)
+            budget = (long)cells * 8;
+        while (missing > 0 && attempts < budget) {
             int x = rnd_int(w->w);
             int y = rnd_int(w->h);
             tile_t *tl = tile_at(w, x, y);

@@ -16,6 +16,14 @@
 #define IN_CHUNK 4096
 #define LINE_MAX_LEN 2048
 
+/*
+** One descriptor held in reserve.  When the process runs out of them, the
+** pending connection would stay in the backlog and poll() would report the
+** listening socket readable for ever -- a busy loop.  Freeing the spare
+** lets us accept that connection and close it politely instead.
+*/
+static int g_spare_fd = -1;
+
 static void set_nonblock(int fd)
 {
     int fl = fcntl(fd, F_GETFL, 0);
@@ -42,7 +50,21 @@ int net_listen(int port)
     if (listen(fd, 128) < 0)
         fatal("listen: %s", strerror(errno));
     set_nonblock(fd);
+    g_spare_fd = open("/dev/null", O_RDONLY);
     return fd;
+}
+
+static void refuse_one(void)
+{
+    int fd;
+
+    if (g_spare_fd >= 0)
+        close(g_spare_fd);
+    fd = accept(g_srv.listen_fd, NULL, NULL);
+    if (fd >= 0)
+        close(fd);
+    g_spare_fd = open("/dev/null", O_RDONLY);
+    log_msg("out of file descriptors: a connection was refused");
 }
 
 static void accept_clients(void)
@@ -52,8 +74,11 @@ static void accept_clients(void)
         client_t *cl;
         int yes = 1;
 
-        if (fd < 0)
+        if (fd < 0) {
+            if (errno == EMFILE || errno == ENFILE)
+                refuse_one();
             return;
+        }
         set_nonblock(fd);
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
         cl = client_new(fd);
@@ -157,6 +182,25 @@ static int build_pollfds(void)
 ** One single-threaded, non-blocking event loop: no request can ever hang the
 ** server, and a slow or silent client only ever penalises itself.
 */
+/* Gives the last messages (the winner, the deaths) a moment to leave. */
+static void drain_outputs(double seconds)
+{
+    double end = now_sec() + seconds;
+
+    while (now_sec() < end) {
+        int pending = 0;
+
+        for (client_t *cl = g_srv.clients; cl; cl = cl->next) {
+            client_flush(cl);
+            if (cl->out_len)
+                pending = 1;
+        }
+        if (!pending)
+            return;
+        poll(NULL, 0, 10);
+    }
+}
+
 void net_loop(void)
 {
     while (g_srv.running) {
@@ -196,4 +240,5 @@ void net_loop(void)
         if (g_srv.winner)
             g_srv.running = 0;
     }
+    drain_outputs(1.0);
 }

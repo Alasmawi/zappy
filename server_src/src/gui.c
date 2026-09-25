@@ -73,6 +73,17 @@ void gui_player_inv(player_t *pl)
     gui_broadcast("%s", buf);
 }
 
+static void send_inventory(client_t *cl, player_t *pl)
+{
+    char buf[256];
+    int n = snprintf(buf, sizeof(buf), "pin #%d %d %d %d", pl->id, pl->x, pl->y,
+                     life_units(pl, now_sec()));
+
+    for (int r = RES_JADE; r < RES_COUNT; r++)
+        n += snprintf(buf + n, sizeof(buf) - (size_t)n, " %d", pl->inv[r]);
+    client_send(cl, "%s", buf);
+}
+
 static void send_map(client_t *cl)
 {
     char buf[256];
@@ -95,6 +106,7 @@ void gui_hello(client_t *cl)
     for (player_t *p = g_srv.players; p; p = p->next) {
         client_send(cl, "pnw #%d %d %d %d %d %s", p->id, p->x, p->y, p->dir,
                     p->level, p->team->name);
+        send_inventory(cl, p);
     }
     for (egg_t *e = g_srv.eggs; e; e = e->next)
         client_send(cl, "enw #%d #%d %d %d", e->id, e->laid_by, e->x, e->y);

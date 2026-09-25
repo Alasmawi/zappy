@@ -3,47 +3,54 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zappy — Minerth</title>
+<title>Zappy · Minerth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Hanken+Grotesk:wght@400;500;600&family=Martian+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header>
-  <h1>Zappy <span class="sub">— the world of Minerth</span></h1>
-  <div id="status" class="status">connecting…</div>
+<header class="bar">
+  <h1 class="brand">Zappy <span>Minerth</span></h1>
+  <dl class="facts">
+    <div><dt>world</dt><dd id="w-size">–</dd></div>
+    <div><dt>time unit</dt><dd id="w-time">–</dd></div>
+    <div><dt>players</dt><dd id="w-players">0</dd></div>
+    <div><dt>eggs</dt><dd id="w-eggs">0</dd></div>
+  </dl>
+  <p id="status" class="status" role="status">Connecting to the server…</p>
 </header>
 
-<main>
-  <section class="board">
-    <canvas id="map"></canvas>
-    <div id="tooltip" class="tooltip hidden"></div>
+<main class="layout">
+  <section class="plate" aria-label="Map of Minerth">
+    <canvas id="map" tabindex="0"
+            aria-label="Map. Click a square, or use the arrow keys, to see what is on it."></canvas>
+    <div id="card" class="card" hidden></div>
+    <div id="banner" class="banner" hidden></div>
   </section>
 
   <aside class="side">
-    <div class="panel">
-      <h2>World</h2>
-      <dl id="world">
-        <dt>size</dt><dd id="w-size">–</dd>
-        <dt>time unit</dt><dd id="w-time">–</dd>
-        <dt>players</dt><dd id="w-players">0</dd>
-        <dt>eggs</dt><dd id="w-eggs">0</dd>
-      </dl>
-    </div>
-
-    <div class="panel">
-      <h2>Teams</h2>
+    <section class="block">
+      <h2>Families</h2>
+      <p class="note">Six members at level 8 win the game.</p>
       <ul id="teams" class="teams"></ul>
-    </div>
+    </section>
 
-    <div class="panel">
-      <h2>Legend</h2>
+    <section class="block">
+      <h2>On the map</h2>
       <ul id="legend" class="legend"></ul>
-      <p class="hint">Click a square to inspect it.</p>
-    </div>
+      <ul class="legend legend-marks">
+        <li><span class="mark mark-sound"></span>broadcast</li>
+        <li><span class="mark mark-ritual"></span>ritual</li>
+        <li><span class="mark mark-kick"></span>kick</li>
+        <li><span class="mark mark-egg"></span>egg</li>
+      </ul>
+    </section>
 
-    <div class="panel grow">
-      <h2>Events</h2>
-      <ul id="log" class="log"></ul>
-    </div>
+    <section class="block grow">
+      <h2>Field log</h2>
+      <ol id="log" class="log" aria-live="polite"></ol>
+    </section>
   </aside>
 </main>
 

@@ -2,6 +2,8 @@
 
 #include "zappy.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,8 +33,9 @@ static int parse_int(const char *s, int *out)
 
     if (!s || !*s)
         return -1;
+    errno = 0;
     v = strtol(s, &end, 10);
-    if (!end || *end)
+    if (!end || *end || errno == ERANGE || v < INT_MIN || v > INT_MAX)
         return -1;
     *out = (int)v;
     return 0;
@@ -95,9 +98,13 @@ int parse_args(int ac, char **av, options_t *opt)
             opt->seeded = 1;
             i++;
         } else if (!strcmp(a, "--density") && i + 1 < ac) {
-            opt->density_scale = strtod(av[++i], NULL);
-            if (opt->density_scale <= 0.0)
-                return fprintf(stderr, "Error: --density must be > 0\n"), -1;
+            char *end = NULL;
+
+            opt->density_scale = strtod(av[++i], &end);
+            if (!end || *end || !(opt->density_scale > 0.0)
+                || opt->density_scale > 10.0)
+                return fprintf(stderr, "Error: --density expects a number "
+                               "in (0, 10]\n"), -1;
             i++;
         } else if (!strcmp(a, "-n")) {
             i++;

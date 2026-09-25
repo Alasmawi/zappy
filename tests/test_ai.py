@@ -9,7 +9,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "client"))
+sys.path.insert(0, os.path.join(ROOT, "client_src"))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
 
 from ai import rules                     # noqa: E402

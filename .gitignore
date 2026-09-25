@@ -1,6 +1,7 @@
-server/build/
-server/zappy_server
-zappy_server
+server_src/build/
+server_src/build-debug/
+server_src/server
+/server
 logs/
 __pycache__/
 *.o

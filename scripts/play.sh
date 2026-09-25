@@ -29,13 +29,13 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-if [ ! -x "$ROOT/zappy_server" ]; then
+if [ ! -x "$ROOT/server" ]; then
     echo "building the server..."
-    make -C "$ROOT/server" || exit 1
+    make -C "$ROOT" || exit 1
 fi
 
 echo "server  : port $PORT, world ${WIDTH}x${HEIGHT}, t=$T, team '$TEAM'"
-"$ROOT/zappy_server" -p "$PORT" -x "$WIDTH" -y "$HEIGHT" \
+"$ROOT/server" -p "$PORT" -x "$WIDTH" -y "$HEIGHT" \
     -n "$TEAM" -c "$BOTS" -t "$T" >"$LOGS/server.log" 2>&1 &
 pids+=($!)
 sleep 0.5
@@ -50,7 +50,7 @@ else
 fi
 
 for i in $(seq 1 "$BOTS"); do
-    python3 "$ROOT/client/zappy_ai.py" -n "$TEAM" -p "$PORT" -v --no-spawn \
+    python3 "$ROOT/client_src/zappy_ai.py" -n "$TEAM" -p "$PORT" -v --no-spawn \
         >"$LOGS/bot$i.log" 2>&1 &
     pids+=($!)
     sleep 0.2

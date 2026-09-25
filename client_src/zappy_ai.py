@@ -30,6 +30,19 @@ def usage(stream=sys.stdout):
     print(__doc__.split("\n", 2)[2].rstrip(), file=stream)
 
 
+def fail(message):
+    print(f"Error: {message}", file=sys.stderr)
+    usage(sys.stderr)
+    sys.exit(84)
+
+
+def number(flag, text):
+    try:
+        return int(text)
+    except ValueError:
+        fail(f"{flag} expects a number, got '{text}'")
+
+
 def parse_args(argv):
     opt = {"team": None, "port": None, "host": "localhost", "verbose": False,
            "seed": None, "max_spawn": 8}
@@ -43,7 +56,7 @@ def parse_args(argv):
             opt["team"] = argv[i + 1]
             i += 2
         elif a == "-p" and i + 1 < len(argv):
-            opt["port"] = int(argv[i + 1])
+            opt["port"] = number("-p", argv[i + 1])
             i += 2
         elif a == "-h" and i + 1 < len(argv):
             opt["host"] = argv[i + 1]
@@ -52,22 +65,20 @@ def parse_args(argv):
             opt["verbose"] = True
             i += 1
         elif a in ("-s", "--seed") and i + 1 < len(argv):
-            opt["seed"] = int(argv[i + 1])
+            opt["seed"] = number("--seed", argv[i + 1])
             i += 2
         elif a == "--max-spawn" and i + 1 < len(argv):
-            opt["max_spawn"] = int(argv[i + 1])
+            opt["max_spawn"] = number("--max-spawn", argv[i + 1])
             i += 2
         elif a == "--no-spawn":
             opt["max_spawn"] = 0
             i += 1
         else:
-            print(f"Error: unexpected argument '{a}'", file=sys.stderr)
-            usage(sys.stderr)
-            sys.exit(84)
-    if not opt["team"] or not opt["port"]:
-        print("Error: -n and -p are required", file=sys.stderr)
-        usage(sys.stderr)
-        sys.exit(84)
+            fail(f"unexpected argument '{a}'")
+    if not opt["team"] or opt["port"] is None:
+        fail("-n and -p are required")
+    if not 0 < opt["port"] < 65536:
+        fail(f"-p expects a port between 1 and 65535, got {opt['port']}")
     return opt
 
 
@@ -117,6 +128,10 @@ def main(argv):
     try:
         bot = Bot(opt["host"], opt["port"], opt["team"],
                   verbose=opt["verbose"], spawner=spawner)
+    except ConnectionRefusedError:
+        print(f"Error: no server is listening on {opt['host']}:{opt['port']}",
+              file=sys.stderr)
+        return 84
     except (OSError, RuntimeError, Dead) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 84

@@ -1,32 +1,36 @@
-all: zappy_server
+# ./server  the C game engine            (built from server_src/)
+# ./client  the autonomous AI player     (wrapper around client_src/)
+# ./zappy_gui  the graphic client        (wrapper around gui/)
 
-zappy_server:
-	$(MAKE) -C server
-	cp server/zappy_server ./zappy_server
-	chmod +x ./zappy_ai ./zappy_gui ./scripts/*.sh
+all: server
 
-server_bin: zappy_server
+server: FORCE
+	$(MAKE) -C server_src
+	cp server_src/server ./server
+	chmod +x ./client ./zappy_gui ./scripts/*.sh
 
-test: server_bin
+test: server
 	python3 tests/test_protocol.py
 	python3 tests/test_ai.py
 	python3 tests/test_victory.py
 
-simulate: server_bin
+simulate: server
 	./scripts/simulate.sh 90 6 200
 
-play: server_bin
+play: server
 	./scripts/play.sh
 
 clean:
-	$(MAKE) -C server clean
+	$(MAKE) -C server_src clean
 	$(RM) -r logs
 	find . -name '__pycache__' -type d -exec $(RM) -r {} + 2>/dev/null || true
 
 fclean: clean
-	$(MAKE) -C server fclean
-	$(RM) ./zappy_server
+	$(MAKE) -C server_src fclean
+	$(RM) ./server
 
 re: fclean all
 
-.PHONY: all zappy_server server_bin test simulate play clean fclean re
+FORCE:
+
+.PHONY: all test simulate play clean fclean re FORCE

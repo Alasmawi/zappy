@@ -14,7 +14,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SERVER = os.path.join(ROOT, "server", "zappy_server")
+SERVER = os.path.join(ROOT, "server")
 
 TESTS = []
 PASSED = 0
@@ -740,6 +740,93 @@ def seed_is_reproducible():
 
 
 # --------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------
+# robustness
+# --------------------------------------------------------------------------
+
+@test
+def rejected_lines_keep_their_turn():
+    """A 'ko' must not overtake the answers still owed to earlier commands."""
+    with Server() as srv:
+        c, _, _, _ = srv.player()
+        c.send_burst(["see", "floop", "inventory", "pick", "left"])
+        got = c.lines(5)
+        check("the see is answered first", got[0].startswith("{"), str(got))
+        check("then the garbage line", got[1] == "ko", str(got))
+        check("then the inventory", got[2].startswith("{food "), str(got))
+        check("then the incomplete pick", got[3] == "ko", str(got))
+        check("then the turn", got[4] == "ok", str(got))
+        c.close()
+
+
+@test
+def a_ritual_left_to_one_player_breaks():
+    """'...unless the player is left alone': then the enchantment fails."""
+    with Server(width=1, height=1, clients=2, t=200) as srv:
+        a, _, _, _ = srv.player()
+        b, _, _, _ = srv.player()
+        check("a jade is on the square", wait_for(a, "jade"))
+        a.ask("enchantment")
+        b.line(5)
+        a.line(5)
+        b.line(5)
+        check("the stones for a level 2 ritual are gathered",
+              bring_stones(a, ("jade", "peridot", "amber")))
+        check("the ritual starts with two players",
+              a.ask("enchantment") == "evolution in progress")
+        b.close()                      # the partner leaves the game
+        start = time.time()
+        answer = a.line(5)
+        check("the starter, left alone, is told it failed", answer == "ko",
+              answer)
+        check("and is told at once, not after 300 time units",
+              time.time() - start < 1.0, f"{time.time() - start:.2f}s")
+        check("and is still level 2",
+              a.ask("enchantment") == "ko")   # stones were used up
+        a.close()
+
+
+@test
+def a_starved_player_leaves_the_map_at_once():
+    with Server(width=3, height=3, clients=1, t=8000) as srv:
+        gui = srv.connect("GRAPHIC")
+        gui.drain(0.2)
+        c, _, _, _ = srv.player()      # never reads again
+        start = time.time()
+        gone = None
+        while gone is None and time.time() - start < 3.0:
+            try:
+                line = gui.line(3.0)
+            except (socket.timeout, TimeoutError, EOFError, OSError):
+                break
+            if line.startswith("pdi "):
+                gone = time.time() - start
+        check("the graphic client sees the body removed", gone is not None)
+        # 10 food at t=8000 is 0.16s of life
+        check("as soon as it starves, not whenever its client reads",
+              gone is not None and gone < 0.6, f"after {gone}s")
+        c.close()
+        gui.close()
+
+
+@test
+def the_server_rejects_bad_options():
+    bad = [["-p", "abc", "-x", "5", "-y", "5", "-n", "a", "-c", "1"],
+           ["-p", "4242", "-x", "0", "-y", "5", "-n", "a", "-c", "1"],
+           ["-p", "4242", "-x", "5", "-y", "5", "-c", "1"],
+           ["-p", "4242", "-x", "5", "-y", "5", "-n", "a", "-c", "1",
+            "--density", "2abc"],
+           ["-p", "99999999999", "-x", "5", "-y", "5", "-n", "a", "-c", "1"]]
+    for args in bad:
+        proc = subprocess.run([SERVER, *args], capture_output=True, timeout=5)
+        check(f"refused: {' '.join(args)}",
+              proc.returncode != 0 and b"Error" in proc.stderr,
+              proc.stderr.decode())
+    proc = subprocess.run([SERVER], capture_output=True, timeout=5)
+    check("no argument prints the usage",
+          b"Usage:" in proc.stdout and proc.returncode != 0)
+
 
 def main():
     if not os.path.exists(SERVER):

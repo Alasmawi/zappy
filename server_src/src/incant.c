@@ -136,9 +136,24 @@ int incant_start(player_t *pl)
     return 1;
 }
 
+/*
+** How many participants must still be standing on the square at the end.
+** The subject: "if one of the members dies, the others will continue the
+** enchantment, unless the player is left alone".  So each member lost to
+** death lowers the bar by one -- but a ritual that needed company never
+** ends with a single player in it.
+*/
+static int still_needed(incant_t *ic)
+{
+    int need = ritual[ic->level][0] - ic->dead;
+    int floor = ritual[ic->level][0] > 1 ? 2 : 1;
+
+    return need < floor ? floor : need;
+}
+
 static void incant_finish(incant_t *ic)
 {
-    int need = ritual[ic->level][0];
+    int need = still_needed(ic);
     int alive = 0;
     int ok;
 
@@ -202,8 +217,8 @@ void incant_check(double now)
 }
 
 /*
-** Called when a participant dies or leaves.  The others carry on, unless
-** the last one is left on his own -- then the ritual is broken.
+** Called when a participant dies or disconnects.  The others carry on,
+** unless the last one is left on his own -- then the ritual is broken.
 */
 void incant_drop_player(player_t *pl)
 {
@@ -213,6 +228,7 @@ void incant_drop_player(player_t *pl)
     if (!ic)
         return;
     pl->incant = NULL;
+    ic->dead++;
     for (int i = 0; i < ic->nb_players; i++) {
         if (ic->players[i] == pl->id)
             ic->players[i] = -1;
